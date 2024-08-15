@@ -29,40 +29,65 @@ You are a helpful, friendly, and efficient customer support assistant. Your role
 - Ensure the customer knows what to expect next and provide any relevant follow-up details.
 `;
 
+
 export async function POST(req) {
-    const openai = new OpenAI()
-    const data = await req.json()
+    console.log('POST request received');
+    
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    const completion = await openai.chat.completions.create({
-        messages: [
-            {
-                role: 'system',
-                content: systemPrompt
-            },
-            ...data,
-        ],
-        model: 'gpt-4o-mini',
-        stream: true,
-    })
+    console.log('OpenAI instance created');
+    console.log('API Key status:', process.env.OPENAI_API_KEY ? 'Set' : 'Not set');
 
-    const stream = new ReadableStream({
-        async start(controller) {
-            const encoder = new TextEncoder()
-            try {
-                for await (const chunk of completion) {
-                    const content = chunk.choices[0].delta.content
-                    if (content) {
-                        const text = encoder.encode(content)
-                        controller.enqueue(text)
+    const data = await req.json();
+    console.log('Request data parsed');
+
+    try {
+        console.log('Initiating chat completion');
+        console.log('Using model: gpt-4o-mini');
+        
+        const completion = await openai.chat.completions.create({
+            messages: [
+                {
+                    role: 'system',
+                    content: systemPrompt
+                },
+                ...data,
+            ],
+            model: 'gpt-4o-mini',
+            stream: true,
+        });
+        console.log('Chat completion created successfully');
+
+        const stream = new ReadableStream({
+            async start(controller) {
+                const encoder = new TextEncoder();
+                console.log('Stream started');
+                try {
+                    for await (const chunk of completion) {
+                        const content = chunk.choices[0].delta.content;
+                        if (content) {
+                            const text = encoder.encode(content);
+                            controller.enqueue(text);
+                            console.log('Chunk processed');
+                        }
                     }
+                } catch (err) {
+                    console.error('Error in stream processing:', err);
+                    controller.error(err);
+                } finally {
+                    console.log('Stream ended');
+                    controller.close();
                 }
-            } catch (err) {
-                controller.error(err)
-            } finally {
-                controller.close()
-            }
-        },
-    })
+            },
+        });
 
-    return new NextResponse(stream)
+        console.log('Returning response stream');
+        return new NextResponse(stream);
+    } catch (error) {
+        console.error('Error in chat completion:', error);
+        return new NextResponse(JSON.stringify({ error: 'An error occurred' }), {
+            status: 500,
+            headers: { 'Content-Type': 'application/json' },
+        });
+    }
 }
