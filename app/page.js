@@ -1,26 +1,34 @@
 'use client'
-import { Box, Fab, Stack, TextField, Typography, useMediaQuery } from '@mui/material'
-import { useState } from 'react'
+import { Box, Fab, Stack, TextField, Typography, useMediaQuery, CssBaseline } from '@mui/material'
+import { useState, useMemo } from 'react'
 import { ThemeProvider, createTheme } from '@mui/material/styles'
 import SendIcon from '@mui/icons-material/Send'
+import MicIcon from '@mui/icons-material/Mic'
+import StopIcon from '@mui/icons-material/Stop'
+import { keyframes } from '@mui/system'
+import Brightness4Icon from '@mui/icons-material/Brightness4'
+import Brightness7Icon from '@mui/icons-material/Brightness7'
 
-const lightTheme = createTheme({
-  palette: {
-    mode: 'light',
-    primary: { main: '#3f51b5' },
-    secondary: { main: '#f50057' },
-    background: { default: '#f5f5f5', paper: '#ffffff' },
-  },
-})
+const pulse = keyframes`
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+`
 
-const darkTheme = createTheme({
-  palette: {
-    mode: 'dark',
-    primary: { main: '#90caf9' },
-    secondary: { main: '#f48fb1' },
-    background: { default: '#303030', paper: '#424242' },
-  },
-})
+const fadeIn = keyframes`
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+`
 
 export default function Home() {
     const [messages, setMessages] = useState([
@@ -31,9 +39,21 @@ export default function Home() {
     ])
     const [message, setMessage] = useState('')
     const [isLoading, setIsLoading] = useState(false)
-    const prefersDarkMode = useMediaQuery('(prefers-color-scheme: dark)')
-    const theme = prefersDarkMode ? darkTheme : lightTheme
-    const isMobile = useMediaQuery('(max-width:600px)');
+    const [mode, setMode] = useState('light')
+    
+    const isMobile = useMediaQuery('(max-width:600px)')
+    const [isRecording, setIsRecording] = useState(false)
+    const [mediaRecorder, setMediaRecorder] = useState(null)
+
+    const theme = useMemo(
+        () =>
+          createTheme({
+            palette: {
+              mode,
+            },
+          }),
+        [mode],
+    )
 
     const sendMessage = async () => {
         if (!message.trim() || isLoading) return;
@@ -92,8 +112,72 @@ export default function Home() {
         }
     }
 
+    const handleRecording = async () => {
+        if (isRecording) {
+            mediaRecorder.stop()
+            setIsRecording(false)
+            return
+        }
+    
+        setIsRecording(true)
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            const recorder = new MediaRecorder(stream)
+            setMediaRecorder(recorder)
+            const audioChunks = []
+    
+            recorder.addEventListener("dataavailable", event => {
+                audioChunks.push(event.data)
+            })
+    
+            recorder.addEventListener("stop", async () => {
+                const audioBlob = new Blob(audioChunks)
+                const audioFile = new File([audioBlob], "audio.webm")
+                console.log("Audio file ready to be sent to API", audioFile)
+                setIsRecording(false)
+                
+                // Send audio file to speech-to-text API
+                const formData = new FormData()
+                formData.append('audio', audioFile)
+                
+                try {
+                    const response = await fetch('/api/speech-to-text', {
+                        method: 'POST',
+                        body: formData,
+                    })
+                    
+                    if (!response.ok) {
+                        throw new Error('Speech-to-text API response was not ok')
+                    }
+                    
+                    const { text } = await response.json()
+                    console.log("Transcribed text:", text)
+                    
+                    // Send transcribed text to chat API
+                    sendMessage(text)
+                } catch (error) {
+                    console.error("Error processing speech to text:", error)
+                    setMessages((messages) => [
+                        ...messages,
+                        { role: 'assistant', content: "I'm sorry, but I encountered an error processing your voice input. Please try again." },
+                    ])
+                }
+            })
+    
+            recorder.start()
+        } catch (err) {
+            console.error("Error accessing microphone:", err)
+            setIsRecording(false)
+        }
+    }
+
+    const toggleColorMode = () => {
+        setMode((prevMode) => (prevMode === 'light' ? 'dark' : 'light'))
+    }
+
     return (
         <ThemeProvider theme={theme}>
+            <CssBaseline />
             <Box
                 width="100vw"
                 height="100vh"
@@ -101,8 +185,25 @@ export default function Home() {
                 flexDirection="column"
                 justifyContent="center"
                 alignItems="center"
-                bgcolor="background.default"
+                sx={{
+                    backgroundImage: 'url("https://media.giphy.com/media/vTr3WiTdqpL6GOT5mF/giphy.gif")',
+                    backgroundSize: 'cover',
+                    backgroundRepeat: 'no-repeat',
+                    backgroundPosition: 'center',
+                }}
             >
+                <Fab
+                    color="primary"
+                    onClick={toggleColorMode}
+                    sx={{
+                        position: 'absolute',
+                        top: 16,
+                        right: 16,
+                    }}
+                >
+                    {mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+                </Fab>
+
                 <Stack
                     direction={'column'}
                     width={isMobile ? "100%" : "600px"}
@@ -113,8 +214,11 @@ export default function Home() {
                     p={isMobile ? 1 : 2}
                     spacing={2}
                     bgcolor="background.paper"
+                    sx={{
+                        animation: `${fadeIn} 0.5s ease-out`,
+                    }}
                 >
-                    <Typography variant={isMobile ? "h5" : "h4"} align="center" color="primary">
+                    <Typography variant={isMobile ? "h5" : "h4"} align="center" color="secondary">
                         AI Customer Support
                     </Typography>
                     <Stack
@@ -131,6 +235,9 @@ export default function Home() {
                                 justifyContent={
                                     message.role === 'assistant' ? 'flex-start' : 'flex-end'
                                 }
+                                sx={{
+                                    animation: `${fadeIn} 0.3s ease-out`,
+                                }}
                             >
                                 <Box
                                     bgcolor={
@@ -157,16 +264,46 @@ export default function Home() {
                             value={message}
                             onChange={(e) => setMessage(e.target.value)}
                             onKeyPress={handleKeyPress}
-                            disabled={isLoading}
+                            disabled={isLoading || isRecording}
                             multiline
                             maxRows={4}
                             size={isMobile ? "small" : "medium"}
                         />
                         <Fab
-                            color="primary"
-                            onClick={sendMessage}
+                            color="secondary"
+                            onClick={handleRecording}
                             disabled={isLoading}
                             size={isMobile ? "small" : "medium"}
+                            aria-label={isRecording ? "Stop recording" : "Start voice recording"}
+                            aria-pressed={isRecording}
+                            aria-live="polite"
+                            sx={{
+                                transition: 'transform 0.2s',
+                                '&:hover': {
+                                    transform: 'scale(1.1)',
+                                },
+                                '&:active': {
+                                    transform: 'scale(0.9)',
+                                },
+                                animation: isRecording ? `${pulse} 1s infinite` : 'none',
+                            }}
+                        >
+                            {isRecording ? <StopIcon /> : <MicIcon />}
+                        </Fab>
+                        <Fab
+                            color="primary"
+                            onClick={sendMessage}
+                            disabled={isLoading || isRecording}
+                            size={isMobile ? "small" : "medium"}
+                            sx={{
+                                transition: 'transform 0.2s',
+                                '&:hover': {
+                                    transform: 'scale(1.1)',
+                                },
+                                '&:active': {
+                                    transform: 'scale(0.9)',
+                                },
+                            }}
                         >
                             <SendIcon />
                         </Fab>
