@@ -77,7 +77,7 @@ export default function Home() {
             </ul>
           );
         } else {
-          return <p>{content}</p>;
+          return <span>{content}</span>;
         }
       };
 
