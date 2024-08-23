@@ -1,4 +1,4 @@
-# AI Assistant Chat Application
+# Meet LUNA, your personal gateway to the cosmos! 
 
 This project is an innovative AI-powered chat application built with Next.js and Material-UI. It features a responsive design that works seamlessly across desktop and mobile devices. The application includes:
 
