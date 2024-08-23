@@ -6,8 +6,8 @@ import ClientLayout from './ClientLayout';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata = {
-  title: "AI_Assistant",
-  description: "AI_Assistant to help answer your Questions", 
+  title: "Luna",
+  description: "Your Cosmic Guide to Exploring the Universe!", 
 };
 
 export default function RootLayout({ children }) {

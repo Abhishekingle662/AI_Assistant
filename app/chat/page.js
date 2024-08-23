@@ -39,7 +39,7 @@ export default function Home() {
     const [messages, setMessages] = useState([
         {
             role: 'assistant',
-            content: "Hi! I'm an AI Customer Support Bot. How can I help you today?",
+            content: "Hi, my name is LUNA and I am here to help you understand the COSMOS. Ask me anything about the outer space!",
         },
     ])
     const [message, setMessage] = useState('')
@@ -274,7 +274,7 @@ export default function Home() {
                 >
                     {/* Title */}
                     <Typography variant={isMobile ? "h5" : "h4"} align="center" color="secondary">
-                        AI Customer Support
+                    LUNA.ai
                     </Typography>
 
                     

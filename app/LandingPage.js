@@ -26,10 +26,10 @@ export default function LandingPage() {
         }}
       >
         <Typography variant="h2" gutterBottom>
-          Welcome to AI Assistant
+          Welcome to LUNA.ai
         </Typography>
         <Typography variant="h5" gutterBottom>
-          Your intelligent chat companion
+          Your guide to the outer space!!
         </Typography>
         <Button
           variant="contained"
